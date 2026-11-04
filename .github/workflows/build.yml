@@ -1,11 +1,10 @@
 
-name: FantaClient Demon Edition Build
+name: FantaClient Demon Edition
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: read
@@ -16,9 +15,13 @@ concurrency:
 
 jobs:
   build:
-    name: Build FantaClient 1.21.11
+    name: Build FantaClient
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: FantaClient
 
     steps:
       - name: Checkout Repository
@@ -30,29 +33,26 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Setup Gradle
+      - name: Setup Gradle 8.14.3
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
 
       - name: Verify Project
-        working-directory: FantaClient
         run: |
-          echo "Checking FantaClient project..."
+          echo "Checking FantaClient..."
           ls -la
-          test -f gradlew
-          test -f build.gradle || test -f build.gradle.kts
-          test -f settings.gradle || test -f settings.gradle.kts
+          test -f build.gradle
+          test -f settings.gradle
+          test -d src/main
 
       - name: Build FantaClient
-        working-directory: FantaClient
-        run: |
-          chmod +x gradlew
-          ./gradlew clean build --no-daemon
+        run: gradle clean build --no-daemon
 
-      - name: List Generated JARs
+      - name: Show Generated JARs
         run: |
-          echo "=== GENERATED JARS ==="
-          find FantaClient/build/libs -maxdepth 1 -type f -name "*.jar" -print
-          test -n "$(find FantaClient/build/libs -maxdepth 1 -type f -name "*.jar" -print -quit)"
+          find build/libs -maxdepth 1 -type f -name "*.jar"
+          test -n "$(find build/libs -maxdepth 1 -name "*.jar" -print -quit)"
 
       - name: Upload ALL JAR Files
         uses: actions/upload-artifact@v4
@@ -61,13 +61,3 @@ jobs:
           path: FantaClient/build/libs/*.jar
           if-no-files-found: error
           retention-days: 30
-          compression-level: 9
-
-      - name: Build Summary
-        if: always()
-        run: |
-          echo "## 🍊 FantaClient Demon Edition" >> "$GITHUB_STEP_SUMMARY"
-          echo "Minecraft: 1.21.11" >> "$GITHUB_STEP_SUMMARY"
-          echo "Java: 21" >> "$GITHUB_STEP_SUMMARY"
-          echo "Build status: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "All generated JARs are included." >> "$GITHUB_STEP_SUMMARY"
