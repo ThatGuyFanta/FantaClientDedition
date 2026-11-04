@@ -1,0 +1,73 @@
+
+name: FantaClient Demon Edition Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fantaclient-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build FantaClient 1.21.11
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify Project
+        working-directory: FantaClient
+        run: |
+          echo "Checking FantaClient project..."
+          ls -la
+          test -f gradlew
+          test -f build.gradle || test -f build.gradle.kts
+          test -f settings.gradle || test -f settings.gradle.kts
+
+      - name: Build FantaClient
+        working-directory: FantaClient
+        run: |
+          chmod +x gradlew
+          ./gradlew clean build --no-daemon
+
+      - name: List Generated JARs
+        run: |
+          echo "=== GENERATED JARS ==="
+          find FantaClient/build/libs -maxdepth 1 -type f -name "*.jar" -print
+          test -n "$(find FantaClient/build/libs -maxdepth 1 -type f -name "*.jar" -print -quit)"
+
+      - name: Upload ALL JAR Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: FantaClient-Demon-Edition-1.21.11
+          path: FantaClient/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 9
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## 🍊 FantaClient Demon Edition" >> "$GITHUB_STEP_SUMMARY"
+          echo "Minecraft: 1.21.11" >> "$GITHUB_STEP_SUMMARY"
+          echo "Java: 21" >> "$GITHUB_STEP_SUMMARY"
+          echo "Build status: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "All generated JARs are included." >> "$GITHUB_STEP_SUMMARY"
